@@ -9,7 +9,7 @@ import streamlit as st
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
-    page_title="CLARK KENT MODE", page_icon="👓", layout="centered"
+    page_title="RUTINA DE CARDIO Y FUERZA", page_icon="🏃‍♂️", layout="centered"
 )
 
 # --- ESTILO VISUAL (CSS PERSONALIZADO) ---
@@ -20,7 +20,7 @@ st.markdown(
     .stExpander { border: 1px solid #334155; border-radius: 8px; background-color: #0f172a; margin-bottom: 10px; }
     
     div.stButton > button:first-child { 
-        background-color: #1d4ed8; 
+        background-color: #2563eb; 
         color: white; 
         border: none; 
         font-weight: bold; 
@@ -29,8 +29,8 @@ st.markdown(
         font-size: 1.2em;
         border-radius: 6px;
     }
-    div.stButton > button:first-child:hover { background-color: #1e40af; }
-    .stProgress > div > div > div > div { background-color: #dc2626; }
+    div.stButton > button:first-child:hover { background-color: #1d4ed8; }
+    .stProgress > div > div > div > div { background-color: #2563eb; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -50,28 +50,20 @@ dias_es = {
 }
 dia_actual = dias_es.get(hoy_tj.strftime("%A"), "Lunes")
 
-# --- PERSISTENCIA TEMPORAL: RECORDAR PESOS ---
-if "historial_pesos" not in st.session_state:
-    st.session_state.historial_pesos = {}
-
 
 # --- LOCALIZADOR DE ARCHIVOS DE VIDEO EN LA RAÍZ ---
 def obtener_ruta_local_video(nombre_ejercicio):
-    # 1. Eliminar acentos/tildes
     nombre_normalizado = unicodedata.normalize("NFD", nombre_ejercicio)
     nombre_sin_acentos = "".join(
         c for c in nombre_normalizado if unicodedata.category(c) != "MN"
     )
 
-    # 2. Convertir a minúsculas y limpiar caracteres especiales o paréntesis
     nombre_limpio = nombre_sin_acentos.lower().strip()
     nombre_limpio = re.sub(r"\s+", "_", nombre_limpio)
     nombre_limpio = re.sub(r"[^a-z0-9_]", "", nombre_limpio)
 
-    # 3. Ruta directa en el directorio raíz
     ruta_archivo = f"{nombre_limpio}.mp4"
 
-    # 4. Verificar existencia
     if os.path.exists(ruta_archivo):
         return ruta_archivo
 
@@ -80,7 +72,7 @@ def obtener_ruta_local_video(nombre_ejercicio):
 
 # --- FUNCIÓN REUTILIZABLE PARA TEMPORIZADOR ---
 def ejecutar_temporizador(segundos, key_btn):
-    if st.button(f"✅ CONCLUIR SERIE", key=key_btn):
+    if st.button(f"✅ CONCLUIR SERIE / EJERCICIO", key=key_btn):
         msg = st.empty()
         bar = st.progress(0)
         for s in range(segundos, -1, -1):
@@ -92,179 +84,125 @@ def ejecutar_temporizador(segundos, key_btn):
         time.sleep(1)
 
 
-# --- BASE DE DATOS DE RUTINAS ---
+# --- BASE DE DATOS DE RUTINAS (FULL CARDIO Y PESO CORPORAL) ---
 rutinas = {
     "Lunes": [
         (
-            "Press de Banca Plano (Barra Recta)",
-            "3 × 6 a 8",
-            120,
-            "Máxima tensión mecánica en el pecho.",
-        ),
-        (
-            "Press Inclinado (Mancuernas)",
-            "3 × 8 a 10",
-            90,
-            "Estímulo a la porción superior (clavicular).",
-        ),
-        (
-            "Press Militar Sentado (Barra Recta)",
-            "3 × 8 a 10",
-            90,
-            "Masa general en el hombro y trapecio.",
-        ),
-        (
-            "Elevaciones Laterales (Mancuernas)",
-            "4 × 12 a 15",
+            "Sentadillas",
+            "3 × 12 a 15",
             60,
-            "Ensanchar la silueta de lado a lado.",
+            "Mantén la espalda recta y baja de forma controlada.",
+        ),
+        (
+            "Flexiones de pecho",
+            "3 × 8 a 12",
+            60,
+            "Apoyar rodillas si cuesta llegar a 8 repeticiones.",
+        ),
+        (
+            "Zancadas alternas",
+            "3 × 10 (por pierna)",
+            60,
+            "Paso firme hacia adelante manteniendo el torso erguido.",
+        ),
+        (
+            "Plancha abdominal",
+            "3 × 30 a 45 seg",
+            45,
+            "Mantén la cadera alineada con la espalda y activa el abdomen.",
         ),
     ],
     "Martes": [
         (
-            "Remo Inclinado (Barra Recta)",
-            "4 × 8 a 10",
-            90,
-            "Trabaja romboides y trapecio medio.",
+            "Jumping Jacks",
+            "45 segundos",
+            15,
+            "Saltos fluidos abriendo y cerrando brazos y piernas simultáneamente.",
         ),
         (
-            "Remo a una mano (Mancuerna)",
-            "3 × 10 (por lado)",
-            90,
-            "Mayor rango de estiramiento para tus brazos largos.",
+            "Escaladores (Mountain climbers)",
+            "30 segundos",
+            15,
+            "En posición de plancha alta, lleva las rodillas al pecho con ritmo.",
         ),
         (
-            "Rompecráneos (Barra Z en banco)",
-            "3 × 10 a 12",
+            "Paso de oso",
+            "45 segundos",
+            15,
+            "Camina en 4 apoyos ida y vuelta manteniendo las rodillas cerca del suelo.",
+        ),
+        (
+            "Skipping",
+            "30 segundos",
             60,
-            "Estimula la cabeza larga (gruesa) del tríceps.",
-        ),
-        (
-            "Curl de Bíceps (Barra Z / Agarre normal)",
-            "3 × 10 a 12",
-            60,
-            "Hipertrofia directa en la cabeza del bíceps.",
+            "Correr en el sitio elevando las rodillas a la altura de la cadera. Restan 60s al completar la vuelta del circuito.",
         ),
     ],
     "Miércoles": [],
     "Jueves": [
         (
-            "Press Militar de pie (Mancuernas)",
-            "3 × 10",
-            90,
-            "Fuerza postural y estabilidad del core a tus 1.97 m.",
-        ),
-        (
-            "Flexiones en banco (Manos elevadas)",
-            "3 × Al fallo",
+            "Flexiones de pecho",
+            "3 × 8 a 12",
             60,
-            "Estímulo de pecho bajo y bombeo de tríceps.",
+            "Enfoque en pectorales y tríceps.",
         ),
         (
-            "Elevaciones Laterales (Mancuernas)",
-            "4 × 12 a 15",
+            "Puente de glúteo",
+            "3 × 15",
             45,
-            "Volumen metabólico en el deltoides lateral.",
+            "Acostado boca arriba, eleva la cadera apretando glúteos arriba.",
         ),
         (
-            "Curl Martillo (Mancuernas)",
+            "Fondos de tríceps en silla o sofá",
             "3 × 10 a 12",
             60,
-            "Desarrolla el braquial (ensancha el brazo de lado).",
+            "Flexiona codos hacia atrás manteniendo el cuerpo cerca de la silla.",
         ),
         (
-            "Copa de Tríceps (Una mancuerna pesada)",
-            "3 × 12",
-            60,
-            "Estiramiento profundo bajo carga para el tríceps.",
+            "Supermanes (Espalda baja)",
+            "3 × 12 a 15",
+            45,
+            "Boca abajo, eleva pecho y piernas ligeramente del suelo.",
+        ),
+        (
+            "Plancha lateral",
+            "3 × 25 seg (por lado)",
+            30,
+            "Soporte sobre un antebrazo manteniendo el cuerpo alineado.",
         ),
     ],
     "Viernes": [
         (
-            "Prensa de Piernas (La de tu banco)",
-            "4 × 12 a 15",
-            120,
-            "Estímulo seguro a los cuádriceps.",
+            "Sentadillas",
+            "15 repeticiones",
+            20,
+            "Ritmo constante y fluido.",
         ),
         (
-            "Peso Muerto Rumano (Barra Recta)",
-            "3 × 10 a 12",
-            90,
-            "Fortalece femorales, glúteos y protege la zona lumbar.",
+            "Jumping Jacks",
+            "45 segundos",
+            20,
+            "Mantén la intensidad cardiovascular.",
         ),
         (
-            "Elevación de talones (Pantorrillas de pie)",
-            "4 × 15 a 20",
-            45,
-            "Rompe la elasticidad del tendón (aguanta 1s arriba/abajo).",
+            "Zancadas atrás",
+            "10 por pierna",
+            20,
+            "Paso hacia atrás controlando la bajada.",
         ),
         (
-            "Elevación de Piernas (Acostado en banco)",
-            "4 × 15 a 20",
-            60,
-            "Hipertrofia del abdomen bajo (la 'V' del abdomen).",
-        ),
-        (
-            "Crunch Abdominal (En el suelo)",
-            "3 × 15 a 20",
-            60,
-            "Relieve e hipertrofia en los cuadritos superiores.",
+            "Plancha abdominal",
+            "40 segundos",
+            20,
+            "Resistencia iso-métrica central.",
         ),
     ],
     "Sábado": [],
-    "Domingo": [
-        (
-            "Plancha Abdominal (Plank tradicional)",
-            "3 × 45-60 seg",
-            45,
-            "Fortalece el core global en isometría.",
-        ),
-        (
-            "Plancha Lateral (Side Plank)",
-            "3 × 30 seg (por lado)",
-            30,
-            "Activa oblicuos y da soporte lateral a la columna.",
-        ),
-        (
-            "Bird-Dog (Perro de caza)",
-            "3 × 12 repcs",
-            45,
-            "Gran ejercicio biomecánico para la salud espinal.",
-        ),
-        (
-            "Vacío Abdominal (Vacuum)",
-            "4 × 30 seg",
-            30,
-            "Reduce la circunferencia de la cintura (transverso).",
-        ),
-    ],
+    "Domingo": [],
 }
 
-# --- SIDEBAR: CUADERNO DE CARGAS ---
-with st.sidebar:
-    st.header("👓 Cuaderno de Cargas")
-    st.write("Pesos guardados hoy:")
-
-    hay_pesos = False
-    for ej_key, peso in st.session_state.historial_pesos.items():
-        if peso > 0:
-            hay_pesos = True
-            nombre_mostrar = (
-                ej_key.replace("ej_", "")
-                .split("_", 1)[1]
-                .replace("_", " ")
-                .title()
-            )
-            st.markdown(f"• **{nombre_mostrar}**: {peso}")
-
-    if not hay_pesos:
-        st.caption("Aún no has registrado pesos hoy.")
-
-    st.divider()
-    st.caption("Clark Kent Protocol v2.9")
-
 # --- HEADER PRINCIPAL ---
-st.title("👓 CLARK KENT MODE: PROTOCOL 🦸‍♂️")
+st.title("🏃‍♂️ ENTRENAMIENTO Y CARDIO")
 st.write("---")
 
 c_r1, c_r2 = st.columns(2)
@@ -286,30 +224,26 @@ seleccion_dia = st.selectbox(
 ejercicios = rutinas.get(seleccion_dia, [])
 
 if not ejercicios:
-    st.info(f"🛌 {seleccion_dia} es día de descanso.")
+    if seleccion_dia == "Miércoles":
+        st.info("🛌 Miércoles: Día de descanso y recuperación. Solo caminar o estirar suavemente.")
+    else:
+        st.info(f"🛌 {seleccion_dia}: Día de descanso. Importante para la recuperación muscular.")
 else:
+    if seleccion_dia == "Martes":
+        st.warning("🔥 **Circuito Cardio en Casa:** Realizar este circuito 4 veces en total, descansando 1 minuto entre cada vuelta completa.")
+    elif seleccion_dia == "Viernes":
+        st.warning("⚡ **Circuito Quemagrasa (Alta Intensidad):** Completar de 3 a 4 rondas. Pasa de un ejercicio a otro con solo 20 segundos de descanso.")
+
     st.subheader(f"📋 Ejercicios – {seleccion_dia}")
 
     for nombre, reps, desc, enfoque in ejercicios:
         id_unico = f"ej_{seleccion_dia}_{nombre.replace(' ', '_')}".lower()
 
-        with st.expander(f"🏋️ {nombre} ➔ {reps}"):
+        with st.expander(f"🤸 {nombre} ➔ {reps}"):
+            st.markdown(f"🎯 **Indicación / Técnica:** {enfoque}")
+            st.markdown(f"⏱️ **Tiempo de Descanso Sugerido:** {desc} segundos")
 
-            # 1. ENTRADA DE PESO RECORDATORIO
-            peso_previo = st.session_state.historial_pesos.get(id_unico, 0.0)
-            peso_nuevo = st.number_input(
-                "Registrar Peso Máximo (lb/kg):",
-                min_value=0.0,
-                value=float(peso_previo),
-                step=2.5,
-                key=f"input_{id_unico}",
-            )
-            st.session_state.historial_pesos[id_unico] = peso_nuevo
-
-            st.markdown(f"🎯 **Enfoque Técnico:** {enfoque}")
-            st.markdown(f"⏱️ **Tiempo de Descanso:** {desc} segundos")
-
-            # 2. REPRODUCTOR DE VIDEO LOCAL (.mp4)
+            # REPRODUCTOR DE VIDEO LOCAL (.mp4)
             ruta_video = obtener_ruta_local_video(nombre)
 
             if ruta_video:
@@ -327,9 +261,13 @@ else:
                     .replace("/", "_")
                 )
                 st.caption(
-                    f"ℹ️ Video no encontrado. Nómbralo como: `{nombre_limpio_sugerido}.mp4` junto a este archivo."
+                    f"ℹ️ Video no encontrado. Nómbralo como: `{nombre_limpio_sugerido}.mp4` en GitHub."
                 )
 
+            st.write("---")
+
+            # TEMPORIZADOR DE DESCANSO
+            ejecutar_temporizador(desc, f"btn_{id_unico}")
             st.write("---")
 
             # 3. TEMPORIZADOR DE DESCANSO
