@@ -194,7 +194,7 @@ rutinas = {
             "Plancha abdominal",
             "40 segundos",
             20,
-            "Resistencia iso-métrica central.",
+            "Resistencia isométrica central.",
         ),
     ],
     "Sábado": [],
@@ -236,8 +236,10 @@ else:
 
     st.subheader(f"📋 Ejercicios – {seleccion_dia}")
 
-    for nombre, reps, desc, enfoque in ejercicios:
-        id_unico = f"ej_{seleccion_dia}_{nombre.replace(' ', '_')}".lower()
+    # Uso de enumerate() para garantizar llaves únicas por índice
+    for idx, (nombre, reps, desc, enfoque) in enumerate(ejercicios):
+        nombre_limpio_key = re.sub(r"[^a-z0-9]", "", nombre.lower())
+        id_unico = f"btn_{seleccion_dia.lower()}_{idx}_{nombre_limpio_key}"
 
         with st.expander(f"🤸 {nombre} ➔ {reps}"):
             st.markdown(f"🎯 **Indicación / Técnica:** {enfoque}")
@@ -266,9 +268,5 @@ else:
 
             st.write("---")
 
-            # TEMPORIZADOR DE DESCANSO
-            ejecutar_temporizador(desc, f"btn_{id_unico}")
-            st.write("---")
-
-            # 3. TEMPORIZADOR DE DESCANSO
-            ejecutar_temporizador(desc, f"btn_{id_unico}")
+            # TEMPORIZADOR DE DESCANSO CON LLAVE ÚNICA
+            ejecutar_temporizador(desc, id_unico)
